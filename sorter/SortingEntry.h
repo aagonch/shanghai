@@ -17,15 +17,15 @@
 
 
 // Entry we are going to sort.
-class Entry
+class SimpleEntry
 {
     int m_number;
     std::string m_string;
 public:
     static constexpr bool IsExternalBuffer = false;
-    Entry() : m_number(-1) {}
-    Entry(int number, const std::string& string) : m_number(number), m_string(string) {}
-    Entry(const char* buff, size_t size)
+    SimpleEntry() : m_number(-1) {}
+    SimpleEntry(int number, const std::string& string) : m_number(number), m_string(string) {}
+    SimpleEntry(const char* buff, size_t size)
     {
         const char* dot = strchr(buff, '.');
         if (dot == nullptr || dot[1] != ' ')
@@ -35,7 +35,7 @@ public:
         m_string.assign(dot + 2, buff + size); // begin=(dot + 2) because of dot and space befoe string begins.
     }
 
-    bool operator<(const Entry& other) const
+    bool operator<(const SimpleEntry& other) const
     {
         int cmp = strcmp(m_string.c_str(), other.m_string.c_str());
 
@@ -43,7 +43,7 @@ public:
         return cmp == 0 && m_number < other.m_number;
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const Entry& entry)
+    friend std::ostream& operator<<(std::ostream& os, const SimpleEntry& entry)
     {
         return os << entry.m_number << ". " << entry.m_string;
     }

@@ -6,35 +6,12 @@
 #include <vector>
 #include <memory>
 #include <algorithm>
-
+#include <boost/optional.hpp>
 #include "common/Clock.h"
 
 #include "SortingEntry.h"
 #include "FileReader.h"
 
-template <class TEntry>
-struct ChunkData
-{
-    std::vector<TEntry> entries;
-    std::shared_ptr<std::vector<char>> buffer;
-    size_t size;
-
-    ChunkData(size_t chunkSize) : size(chunkSize)
-    {
-        if (TEntry::IsExternalBuffer)
-        {
-            buffer = std::make_shared<std::vector<char>>(chunkSize);
-
-        }
-        Reserve(chunkSize);
-    }
-
-    void Reserve(size_t chunkSize)
-    {
-        const size_t aproxBytesPerLine = 20;
-        entries.reserve(chunkSize / aproxBytesPerLine);
-    }
-};
 
 template <class TEntry>
 void Sort(std::vector<TEntry>& entries)
@@ -53,7 +30,7 @@ void SaveFile(const char* filename, const std::vector<TEntry>& entries)
     Clock c;
     c.Start();
 
-    std::ofstream file(filename);
+    std::ofstream file(filename, std::ofstream::binary);
 
     if (!file)
         throw std::runtime_error("Cannot open output file.");
@@ -68,27 +45,83 @@ void SaveFile(const char* filename, const std::vector<TEntry>& entries)
     std::cout << "SaveFile complete, time:" << c.ElapsedTime() << "sec" << std::endl;
 }
 
+class FileRegistry
+{
+    size_t m_counter = 0;
+    std::string m_initialFile;
+    std::vector<std::string> m_files;
+public:
+    FileRegistry(const std::string& initialFile) : m_initialFile(initialFile) {}
+
+    const std::string& GetInitialFile() const { return m_initialFile; }
+
+    std::string GetNext()
+    {
+        std::string outputFile = m_initialFile +  "." + std::to_string(++m_counter);
+        m_files.push_back(outputFile);
+        return outputFile;
+    }
+
+    std::vector<std::string> PopFront(size_t count)
+    {
+        std::vector<std::string> result;
+        if (m_files.size() <= count)
+        {
+            m_files.swap(result);
+            return result;
+        }
+        result.assign(m_files.begin(), m_files.begin() + count);
+        m_files.erase(m_files.begin(), m_files.begin() + count);
+        return result;
+    }
+};
+
 template <class TEntry>
 class InitialSorter
 {
+    template <class TEntry_>
+    struct ChunkData
+    {
+        std::vector<TEntry_> entries;
+        std::shared_ptr<std::vector<char>> buffer;
+        size_t size;
+
+        ChunkData(size_t chunkSize) : size(chunkSize)
+        {
+            if (TEntry::IsExternalBuffer)
+            {
+                buffer = std::make_shared<std::vector<char>>(chunkSize);
+
+            }
+            Reserve(chunkSize);
+        }
+
+        void Reserve(size_t chunkSize)
+        {
+            const size_t aproxBytesPerLine = 20;
+            entries.reserve(chunkSize / aproxBytesPerLine);
+        }
+    };
+
+    size_t m_chunkSize;
 
 public:
-    InitialSorter()
+    InitialSorter(size_t chunkSize) : m_chunkSize(chunkSize)
     {
 
     }
     // returns file name list of sorted chunks
-    std::vector<std::string> ProcessFile(const char* fileName, size_t chunkSize)
+    void Process(FileRegistry& registry)
     {
-        ChunkData<TEntry> chunk(chunkSize);
-        return ReadFile(fileName, chunk);
+        ChunkData<TEntry> chunk(m_chunkSize);
+        ReadFile(chunk, registry);
     }
 
 private:
 
-    std::vector<std::string> ReadFile(const char* fileName, ChunkData<Entry>& data)
+    std::vector<std::string> ReadFile(ChunkData<SimpleEntry>& data, FileRegistry& registry)
     {
-        std::ifstream file(fileName);
+        std::ifstream file(registry.GetInitialFile().c_str());
         if (!file)
             throw std::logic_error("Cannot open file");
 
@@ -109,59 +142,146 @@ private:
 
         double readTime = c2.ElapsedTime();
 
+        ProcessChunk(data, registry);
+
         std::cout << "Read complete, FileSize:" << fileSize*1e-6 << "M"
                   << ", EntryCount:" << data.entries.size()
                   << ", ReadTime:" << readTime << "sec"
                   << std::endl;
     }
 
-    std::vector<std::string> ReadFile(const char* fileName, ChunkData<FastEntry>& data)
+    void ReadFile(ChunkData<FastEntry>& data, FileRegistry& registry)
     {
-        data.entries.clear();
-
-        std::vector<std::string> result;
-
-        auto* reader = new FileReader(fileName);
-
-        size_t fileSize = reader->GetFileSize();
-
-        double readTime = 0;
+        FileReader reader(registry.GetInitialFile().c_str());
 
         Clock c;
         c.Start();
         size_t totalEntries = 0;
-        while (reader->LoadNextChunk(data.buffer))
+        while (reader.LoadNextChunk(data.buffer))
         {
+            data.entries.clear();
+
             FileReader::Buffer line;
-            while (reader->TryGetLine(&line))
+            while (reader.TryGetLine(&line))
             {
                 ++totalEntries;
                 data.entries.emplace_back(line.data, line.size);
+//                std::cout << "LOADED [";
+//                std::cout.write(line.data, line.size);
+//                std::cout << "]" << std::endl;
             }
+            double readTime = c.ElapsedTime();
 
-            readTime += c.ElapsedTime();
-            ProcessChunk(fileName, data, result);
+            std::cout << "Chunk read complete, EntryCount:" << data.entries.size()
+                      << ", ReadTime:" << readTime << "sec"
+                      << std::endl;
+
+            ProcessChunk(data, registry);
             c.Start();
         }
 
-        std::cout << "Read complete, FileSize:" << fileSize*1e-6 << "M"
-                  << ", EntryCount:" << data.entries.size()
-                  << ", ReadTime:" << readTime << "sec"
-                  << std::endl;
-
-        return result;
+//        std::cout << "Read complete, FileSize:" << fileSize*1e-6 << "M"
+//                  << ", EntryCount:" << data.entries.size()
+//                  << ", ReadTime:" << readTime << "sec"
+//                  << std::endl;
     }
 
-    void ProcessChunk(const char* inputFile, ChunkData<FastEntry>& data, std::vector<std::string>& outputFiles)
+    void ProcessChunk(ChunkData<FastEntry>& data, FileRegistry& registry)
     {
-        std::string outputFile = inputFile;
-        outputFile += "." + std::to_string(outputFiles.size());
-        outputFiles.push_back(outputFile);
-
         Sort(data.entries);
-
-        SaveFile(outputFile.c_str(), data.entries);
+        SaveFile(registry.GetNext().c_str(), data.entries);
     }
+};
+
+template<class TEntry>
+class Merger
+{
+    struct Source
+    {
+        std::shared_ptr<FileReader> reader;
+        std::shared_ptr<std::vector<char>> buffer;
+        boost::optional<TEntry> currentEntry;
+
+        void Next()
+        {
+            FileReader::Buffer line;
+            if (!reader->TryGetLine(&line))
+            {
+                if (!reader->LoadNextChunk(buffer) || !reader->TryGetLine(&line))
+                {
+                    currentEntry = boost::none;
+                    return;
+                }
+            }
+
+            currentEntry = TEntry(line.data, line.size);
+        }
+    };
+
+    std::vector<Source> m_sources;
+
+public:
+    Merger(size_t count, size_t readBufSize) : m_sources(count)
+    {
+        for (size_t n = 0; n < count; ++n)
+        {
+            m_sources[n].buffer = std::make_shared<std::vector<char>>(readBufSize);
+        }
+    }
+
+    void Process(FileRegistry& registry)
+    {
+        for (;;)
+        {
+            std::vector<std::string> files = registry.PopFront(m_sources.size());
+            if (files.size() < 2)
+                return;
+
+            for (size_t n = 0; n < files.size(); ++n)
+            {
+                m_sources[n].reader = std::make_shared<FileReader>(files[n].c_str());
+                m_sources[n].Next();
+            }
+
+            DoMergeIteration(registry.GetNext(), files.size());
+        }
+    }
+
+private:
+
+    void DoMergeIteration(const std::string& outputFileName, size_t activeSourceCount)
+    {
+        std::ofstream file(outputFileName.c_str());
+
+        size_t N = activeSourceCount;
+        assert(N <= m_sources.size());
+
+        for (;;)
+        {
+            size_t index = N; // index of source with min currentEntry (N means invalid)
+
+            for (size_t n = 0; n < N; ++n)
+            {
+                if (!m_sources[n].currentEntry.is_initialized()) continue;
+                if (index < N && m_sources[n].currentEntry.get() < m_sources[index].currentEntry.get())
+                    index = n;
+            }
+
+            if (index < N)
+            {
+                // we found index of source with min entry
+                // write entry to file and fetch next
+                file << m_sources[index].currentEntry.get();
+                m_sources[index].Next();
+                continue;
+            }
+
+            break; // all sources has invalid items, stop
+        }
+
+        file.close();
+    }
+
 };
 
 int main(int argc, char** argv)
@@ -178,9 +298,14 @@ int main(int argc, char** argv)
         Clock c;
         c.Start();
 
-        //InitialSorter<Entry> sorter;
-        InitialSorter<FastEntry> sorter;
-        sorter.ProcessFile(argv[1], 1100*1024*1024);
+        FileRegistry registry(argv[1]);
+
+        //InitialSorter<SimpleEntry> sorter;
+        InitialSorter<FastEntry> sorter(200);
+        sorter.Process(registry);
+
+        Merger<FastEntry> merger(3, 1000);
+        merger.Process(registry);
 
         std::cout << "Success, totalTime:" << c.ElapsedTime() << "sec"
                   << ", xxx:" << xxx << ""
@@ -194,7 +319,4 @@ int main(int argc, char** argv)
     }
 
     return 0;
-
-
-
 }
