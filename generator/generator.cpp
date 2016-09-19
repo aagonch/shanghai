@@ -1,0 +1,152 @@
+#include <iostream>
+#include <fstream>
+#include <stdexcept>
+#include <cstdlib>
+#include <cctype>
+
+#include <boost/lexical_cast.hpp>
+#include <boost/circular_buffer.hpp>
+
+#include "common/Clock.h"
+
+extern const char* words[];
+
+const int MaxWords = 10;
+const int MaxNum = 1000000;
+const size_t RepeatBufferSize = 100;
+
+size_t GetWordsCount();
+size_t GetFileSize(const std::string& param);
+std::string MakeNewString();
+void Generate(const char* fileName, size_t requestedSize);
+
+int main(int argc, char** argv)
+{
+    if (argc != 3)
+    {
+        std::cerr << "Usage: generator <output-file> <file-size>" << std::endl;
+        return 1;
+    }
+
+    srand(time(0));
+
+    try
+    {
+        const size_t requestedSize = GetFileSize(argv[2]);
+
+        Clock clock;
+        clock.Start();
+
+        Generate(argv[1], requestedSize);
+
+        std::cout << "Success! Elapsed time: " << clock.ElapsedTime() << " sec."<< std::endl;
+    }
+    catch(std::exception& e)
+    {
+        std::cerr << "ERROR: " << e.what() << std::endl;
+        return 1;
+    }
+
+    return 0;
+}
+
+void Generate(const char* fileName, size_t requestedSize)
+{
+    std::ofstream file(fileName);
+    if (!file)
+        throw std::logic_error("Cannot open file");
+
+    // Task conditions requires that some strings are met more than 1 time in the file
+    // Store recent strings and insert them second time sometimes
+    boost::circular_buffer<std::string> recentStrings(RepeatBufferSize);
+
+    while (file.tellp() < requestedSize)
+    {
+        int num = rand() % MaxNum;
+
+        file << num << ".";
+
+        const int magicNumber = 42;
+        bool usePrevString = !recentStrings.empty() && (rand() % magicNumber == 0);
+        if (usePrevString)
+        {
+            // get random string from recentStrings
+            size_t index = static_cast<size_t>(rand() % recentStrings.size());
+            file << recentStrings[index];
+        }
+        else
+        {
+            // generate a new string
+            recentStrings.push_back(MakeNewString());
+            file << recentStrings.back();
+        }
+
+        file << std::endl;
+    }
+
+    file.close();
+}
+
+// Can parse "3000", "3K", "3.5M", 100G.
+size_t GetFileSize(const std::string& param)
+{
+    if (param.empty())
+        throw std::logic_error("Empty file size");
+
+    const int kilo = 1024;
+    int mult = 1;
+    size_t numSize = param.size();
+
+    char lastChar = param[param.size() - 1];
+    switch (lastChar)
+    {
+    case 'K':
+        mult = kilo;
+        numSize -= 1;
+        break;
+
+    case 'M':
+        mult = kilo*kilo;
+        numSize -= 1;
+        break;
+
+    case 'G':
+        mult = kilo*kilo*kilo;
+        numSize -= 1;
+        break;
+    }
+
+    try
+    {
+        double num = boost::lexical_cast<double>(param.substr(0, numSize));
+        return static_cast<size_t>(num * mult);
+    }
+    catch (boost::bad_lexical_cast&)
+    {
+        throw std::logic_error("Invalid file size");
+    }
+}
+
+size_t GetWordsCount()
+{
+    size_t n = 0;
+    while(words[n]) ++n;
+    return n;
+}
+
+// return new string (always started with space).
+std::string MakeNewString()
+{
+    static const size_t totalWords = GetWordsCount();
+
+    std::string result;
+    result.reserve(50);
+    int numWords = rand() % MaxWords + 1;
+    for (int n = 0; n < numWords; ++n)
+    {
+        size_t wordIndex = rand() % totalWords;
+        result += " ";
+        result += words[wordIndex];
+    }
+    return result;
+}
