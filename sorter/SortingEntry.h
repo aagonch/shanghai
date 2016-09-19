@@ -22,6 +22,7 @@ class Entry
     int m_number;
     std::string m_string;
 public:
+    static constexpr bool IsExternalBuffer = false;
     Entry() : m_number(-1) {}
     Entry(int number, const std::string& string) : m_number(number), m_string(string) {}
     Entry(const char* buff, size_t size)
@@ -71,6 +72,7 @@ class TFastEntry
 
 public:
 
+    static constexpr bool IsExternalBuffer = true;
     static constexpr bool UseHash = UseHash_;
 
     TFastEntry() {}
