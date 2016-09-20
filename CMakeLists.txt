@@ -8,7 +8,8 @@ include_directories(.)
 add_definitions(-std=c++11 -g)
 
 set(COMMON_HEADER_LIST
-    ./common/Clock.h)
+    ./common/Clock.h
+    ./common/Utils.h)
 
 aux_source_directory(./generator GENERATOR_SRC_LIST)
 aux_source_directory(./sorter SORTER_SRC_LIST)
@@ -24,7 +25,11 @@ set(XXHASH_SRC_LIST
 set(SORTER_HEADER_LIST
     ./sorter/SortingEntry.h
     ./sorter/FileReader.h
-    ./sorter/Utils.h)
+    ./sorter/FileRegistry.h
+    ./sorter/FileWriter.h
+    ./sorter/InitialSorter.h
+    ./sorter/Merger.h
+    )
 
 add_executable(sorter ${SORTER_SRC_LIST} ${COMMON_HEADER_LIST} ${SORTER_HEADER_LIST} ${XXHASH_SRC_LIST})
 target_link_libraries(sorter ${Boost_LIBRARIES})

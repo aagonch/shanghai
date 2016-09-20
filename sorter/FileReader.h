@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common/Utils.h"
+
 #include <cstdio>
 #include <memory>
 #include <vector>
@@ -7,9 +9,7 @@
 #include <iostream>
 #include <sstream>
 #include <cassert>
-#include "boost/noncopyable.hpp"
-
-#include "Utils.h"
+#include <boost/noncopyable.hpp>
 
 struct FileReader : boost::noncopyable
 {

@@ -1,20 +1,15 @@
 #pragma once
 
+#include "common/Utils.h"
+
 #include <iostream>
 #include <string>
 #include <cstring>
 #include <cassert>
 #include <algorithm>
+#include <tuple>
 
 #include "xxhash/xxhash.h"
-
-#include "Utils.h"
-
-// some platforms may define macros 'min', undef it!
-#ifdef min
-#undef min
-#endif
-
 
 // Entry we are going to sort.
 class SimpleEntry

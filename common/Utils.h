@@ -1,7 +1,10 @@
 #pragma once
 
+#include <iostream>
 #include <sstream>
 #include <string>
+#include <cstring>
+#include <tuple>
 
 
 inline uint64_t ReverseByteOrder(uint64_t value)
