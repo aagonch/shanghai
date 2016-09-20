@@ -35,6 +35,8 @@ public:
         m_string.assign(dot + 2, buff + size); // begin=(dot + 2) because of dot and space befoe string begins.
     }
 
+    bool IsValid() const { return m_number >= 0; }
+
     bool operator<(const SimpleEntry& other) const
     {
         int cmp = strcmp(m_string.c_str(), other.m_string.c_str());
@@ -100,6 +102,8 @@ public:
         m_strPtr = str;
     }
 
+    bool IsValid() const { return m_linePtr != nullptr; }
+
     XXH64_hash_t GetHash() const { return m_hash; }
 
     bool operator<(const TFastEntry& other) const
@@ -144,8 +148,8 @@ public:
     {
         static const std::string eol = GetPlatformEol();
         os.write(entry.m_linePtr, entry.m_lineSize);
-        // os.write(&eol[0], eol.size()); // Do not use std::endl, because it flushs the stream.
-        return os << '\n';
+        os.write(&eol[0], eol.size()); // Do not use std::endl, because it flushs the stream.
+        return os;
     }
 };
 

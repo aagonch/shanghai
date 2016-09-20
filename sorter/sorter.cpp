@@ -13,6 +13,8 @@
 #include "FileReader.h"
 
 
+#include <boost/filesystem.hpp>
+
 template <class TEntry>
 void Sort(std::vector<TEntry>& entries)
 {
@@ -55,11 +57,13 @@ public:
 
     const std::string& GetInitialFile() const { return m_initialFile; }
 
-    std::string GetNext()
+    size_t Count() const { return m_files.size(); }
+
+    std::string GetNext(const std::string& label = std::string())
     {
-        std::string outputFile = m_initialFile +  "." + std::to_string(++m_counter);
-        m_files.push_back(outputFile);
-        return outputFile;
+        std::string fname = m_initialFile + "." + label + (label.empty() ? "" : ".") + std::to_string(++m_counter);
+        m_files.push_back(fname);
+        return fname;
     }
 
     std::vector<std::string> PopFront(size_t count)
@@ -200,7 +204,7 @@ class Merger
     {
         std::shared_ptr<FileReader> reader;
         std::shared_ptr<std::vector<char>> buffer;
-        boost::optional<TEntry> currentEntry;
+        TEntry currentEntry;\
 
         void Next()
         {
@@ -209,7 +213,7 @@ class Merger
             {
                 if (!reader->LoadNextChunk(buffer) || !reader->TryGetLine(&line))
                 {
-                    currentEntry = boost::none;
+                    currentEntry = TEntry(); // invalidate entry
                     return;
                 }
             }
@@ -231,11 +235,11 @@ public:
 
     void Process(FileRegistry& registry)
     {
-        for (;;)
+        int mergeIter = 0;
+        for (; registry.Count() > 1; ++mergeIter)
         {
             std::vector<std::string> files = registry.PopFront(m_sources.size());
-            if (files.size() < 2)
-                return;
+            assert(files.size() > 1);
 
             for (size_t n = 0; n < files.size(); ++n)
             {
@@ -243,7 +247,23 @@ public:
                 m_sources[n].Next();
             }
 
-            DoMergeIteration(registry.GetNext(), files.size());
+            Clock c;
+            c.Start();
+
+            std::string outputFile = registry.GetNext("m");
+            DoMergeIteration(outputFile, files.size());
+
+            std::cout << "Merge #" << mergeIter << " complete for [";
+            for (auto f : files) std::cout << f << "; ";
+            std::cout << "] -> " << outputFile << ", Time:" << c.ElapsedTime() << std::endl;
+
+            for (size_t n = 0; n < files.size(); ++n)
+            {
+                m_sources[n].reader.reset(); // close file
+                boost::filesystem::remove(files[n]);
+            }
+
+            std::cout << "After deleting Time:" << c.ElapsedTime() << std::endl;
         }
     }
 
@@ -262,9 +282,16 @@ private:
 
             for (size_t n = 0; n < N; ++n)
             {
-                if (!m_sources[n].currentEntry.is_initialized()) continue;
-                if (index < N && m_sources[n].currentEntry.get() < m_sources[index].currentEntry.get())
+                ++yyy;
+                if (!m_sources[n].currentEntry.IsValid())
+                {
+                    continue;
+                }
+
+                if (index == N || m_sources[n].currentEntry < m_sources[index].currentEntry)
+                {
                     index = n;
+                }
             }
 
             if (index < N)
@@ -294,18 +321,23 @@ int main(int argc, char** argv)
 
     try
     {
-
         Clock c;
         c.Start();
 
         FileRegistry registry(argv[1]);
 
         //InitialSorter<SimpleEntry> sorter;
-        InitialSorter<FastEntry> sorter(200);
+
+        size_t M = 1024*1024;
+        InitialSorter<FastEntry> sorter(1024*M);
         sorter.Process(registry);
 
-        Merger<FastEntry> merger(3, 1000);
+        Merger<FastEntry> merger(3, 100*M);
         merger.Process(registry);
+
+        std::vector<std::string> result = registry.PopFront(100);
+        assert(result.size() == 1);
+        boost::filesystem::rename(result.at(0), argv[2]);
 
         std::cout << "Success, totalTime:" << c.ElapsedTime() << "sec"
                   << ", xxx:" << xxx << ""

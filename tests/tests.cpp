@@ -43,6 +43,12 @@ BOOST_AUTO_TEST_CASE(TestFileReaderInit)
     FileReader::Buffer buffer;
     BOOST_CHECK(!reader.TryGetLine(&buffer));
     BOOST_CHECK_EQUAL(3, reader.GetFileSize());
+
+    auto chunk = std::make_shared<std::vector<char>>(500);
+    BOOST_CHECK(reader.LoadNextChunk(chunk));
+
+    FileReader::Buffer b;
+    BOOST_CHECK(reader.TryGetLine(&b));
 }
 
 BOOST_AUTO_TEST_CASE(TestFileReaderSimpleRead)

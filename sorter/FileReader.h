@@ -76,6 +76,8 @@ struct FileReader : boost::noncopyable
 
     bool TryGetLine(Buffer* lineBuffer)
     {
+        if (m_nextLinePos == nullptr) return false;
+
         const char* nextEolPos = reinterpret_cast<const char*>(memchr(m_nextLinePos, m_actualEol, m_remained));
 
         if (nextEolPos == nullptr)

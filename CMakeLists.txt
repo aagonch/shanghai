@@ -1,7 +1,7 @@
 project(shanghai)
 cmake_minimum_required(VERSION 2.8)
 
-find_package(Boost 1.54.0 REQUIRED system unit_test_framework)
+find_package(Boost 1.54.0 REQUIRED system filesystem unit_test_framework)
 
 include_directories(.)
 
