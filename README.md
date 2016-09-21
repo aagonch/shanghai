@@ -4,25 +4,28 @@
 Goncharov Alexey for Altium.
 
 Requirements:
-	CMake v2.8 or above
-	C++11 compiler compatible with gcc 4.9 or above
-	boost v 1.54 or above
+	* CMake v2.8 or above;
+	* C++11 compiler compatible with gcc 4.9 or above;
+	* boost v 1.54 or above.
 
 Building
-	Go to project folder
-	mkdir build
-	cd build
-	cmake ..
-	make
+	0. Go to project folder
+	0. mkdir build
+	0. cd build
+	0. cmake ..
+	0. make
 
 This app was developed under Linux, it also can be built and run under MS Windows. 
 
 generator
+---------
 	Generate random strings file.
+
 	Usage: generator <file-name> <size>
 	Example: generator data.txt 100G
 
 sorter
+------
 	Sorts file of random strings.
 	First it splits file to sorted chunks, which are stored in tmp files.
 	Then it merges chunks to bigger chunks, until one file left.
@@ -33,6 +36,7 @@ sorter
 	Chunk size should be about 1/2-1/4 of RAM size.
 
 tests
+-----
 	Some unittests.
 	Usage: tests
     
