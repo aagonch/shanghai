@@ -126,7 +126,7 @@ private:
 
             ProcessChunk(data, registry);
             c.Start();
-            if (++n == 5) return;
+            //if (++n == 5) return;
         }
     }
 
