@@ -198,45 +198,94 @@ BOOST_AUTO_TEST_CASE(TestGetPrefix)
 }
 
 template<typename TEntry>
+void ExpectLess(const char* s1, const char* s2, int size1 = -1,  int size2 = -1)
+{
+    size_t len1 = size1 < 0 ? strlen(s1) : static_cast<size_t>(size1);
+    size_t len2 = size2 < 0 ? strlen(s2) : static_cast<size_t>(size2);
+
+    TEntry e1(s1, len1);
+    TEntry e2(s2, len2);
+
+    BOOST_CHECK(e1 < e2);
+    BOOST_CHECK(!(e2 < e1));
+}
+
+
+#define EXPECT_LESS(s1, s2) \
+{\
+    TEntry e1(s1, strlen(s1));\
+    TEntry e2(s2, strlen(s2));\
+    BOOST_CHECK(e1 < e2);\
+    BOOST_CHECK(!(e2 < e1));\
+}
+
+#define EXPECT_LESS1(s1, s2, len1, len2) \
+{\
+    TEntry e1(s1, len1);\
+    TEntry e2(s2, len2);\
+    BOOST_CHECK(e1 < e2);\
+    BOOST_CHECK(!(e2 < e1));\
+}
+
+#define EXPECT_EQUAL(s1, s2) \
+{\
+    TEntry e1(s1, strlen(s1));\
+    TEntry e2(s2, strlen(s2));\
+    BOOST_CHECK(!(e1 < e2));\
+    BOOST_CHECK(!(e2 < e1));\
+    if (TEntry::UseHash)\
+    {\
+        BOOST_CHECK(e1.GetHash() != 0);\
+        BOOST_CHECK_EQUAL(e1.GetHash(), e2.GetHash());\
+    }\
+}
+
+#define EXPECT_EQUAL1(s1, s2, len1, len2) \
+{\
+    TEntry e1(s1, len1);\
+    TEntry e2(s2, len2);\
+    BOOST_CHECK(!(e1 < e2));\
+    BOOST_CHECK(!(e2 < e1));\
+    if (TEntry::UseHash)\
+    {\
+        BOOST_CHECK(e1.GetHash() != 0);\
+        BOOST_CHECK_EQUAL(e1.GetHash(), e2.GetHash());\
+    }\
+}
+
+template<typename TEntry>
 void TestEntryCmp()
 {
-    BOOST_CHECK(!(TEntry("124. AA", 7) < TEntry("124. AA", 7)));
+    EXPECT_EQUAL("124. AA", "124. AA");
 
     // Cmp inside prefix diff by val
-    BOOST_CHECK(TEntry("124. ABCDEFG", 13) < TEntry("124. ZBCDEFA", 13));
-    BOOST_CHECK(TEntry("124. A", 6) < TEntry("124. B", 6));
+    EXPECT_LESS("124. ABCDEFG", "124. ZBCDEFA");
+    EXPECT_LESS("124. A", "124. B");
 
     // Cmp inside prefix diff by len
-    BOOST_CHECK(TEntry("124. AA", 7) < TEntry("124. AAA", 8));
+    EXPECT_LESS("124. AA", "124. AAA");
 
     // equality
-    BOOST_CHECK(!(TEntry("124. AA", 7) < TEntry("124. AA", 7)));
-    BOOST_CHECK(!(TEntry("124. ABCDEFG", 13) < TEntry("124. ABCDEFG", 13)));
+    EXPECT_EQUAL("124. AA", "124. AA");
+    EXPECT_EQUAL("124. ABCDEFG", "124. ABCDEFG");
 
     // Cmp outside prefix diff by val
-    BOOST_CHECK(TEntry("124. AAAAAAAAABCDEFG", 21) < TEntry("124. AAAAAAAAZBCDEFA", 21));
-    BOOST_CHECK(TEntry("124. AAAAAAAAA", 14) < TEntry("124. AAAAAAAAB", 14));
+    EXPECT_LESS("124. AAAAAAAAABCDEFG", "124. AAAAAAAAZBCDEFA");
+    EXPECT_LESS("124. AAAAAAAAA", "124. AAAAAAAAB");
 
     // Cmp outside prefix diff by len
-    BOOST_CHECK(TEntry("124. AAAAAAAAAA", 15) < TEntry("124. AAAAAAAAAAA", 16));
-    BOOST_CHECK(TEntry("124. AA", 7) < TEntry("124. AAAAAAAAAAA", 16));
+    EXPECT_LESS("124. AAAAAAAAAA", "124. AAAAAAAAAAA");
+    EXPECT_LESS("124. AA", "124. AAAAAAAAAAA");
 
     // equality
-    BOOST_CHECK(!(TEntry("124. AAAAAAAAAA", 15) < TEntry("124. AAAAAAAAAA", 15)));
-    BOOST_CHECK(!(TEntry("124. AAAAAAAAABCDEFG", 21) < TEntry("124. AAAAAAAAABCDEFG", 21)));
+    EXPECT_EQUAL("124. AAAAAAAAAA", "124. AAAAAAAAAA");
+    EXPECT_EQUAL("124. AAAAAAAAABCDEFG", "124. AAAAAAAAABCDEFG");
 
     // ignore trash after ending
-    BOOST_CHECK(TEntry("123. AAAAAZTRASH", 10) < TEntry("124. AAAAATRASH", 10));
-    BOOST_CHECK(!(TEntry("124. AAAAAAAAABCDEFGZTRASH", 21) < TEntry("124. AAAAAAAAABCDEFGTRASH", 21)));
-
+    EXPECT_LESS1("123. AAAAAZTRASH", "124. AAAAATRASH", 10, 10);
+    EXPECT_EQUAL1("124. AAAAAAAAABCDEFGZTRASH", "124. AAAAAAAAABCDEFGTRASH", 20, 20);
     // cmp by number
-    BOOST_CHECK(!(TEntry("5. AAAAAAAAAA", 13) < TEntry("124. AAAAAAAAAA", 13)));
-
-    if (TEntry::UseHash)
-    {
-        BOOST_CHECK(TEntry("123. AAAAAZTRASH", 10).GetHash() != 0);
-        BOOST_CHECK_EQUAL(TEntry("123. AAAAAZTRASH", 10).GetHash(), TEntry("123. AAAAAZTRASH", 10).GetHash());
-    }
+    EXPECT_LESS("5. AAAAAAAAAA", "124. AAAAAAAAAA");
 }
 
 

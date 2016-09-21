@@ -4,10 +4,10 @@
 #include <cstdlib>
 #include <cctype>
 
-#include <boost/lexical_cast.hpp>
 #include <boost/circular_buffer.hpp>
 
 #include "common/Clock.h"
+#include "common/Utils.h"
 
 extern const char* words[];
 
@@ -32,7 +32,7 @@ int main(int argc, char** argv)
 
     try
     {
-        const size_t requestedSize = GetFileSize(argv[2]);
+        const size_t requestedSize = GetSize(argv[2]);
 
         Clock clock;
         clock.Start();
@@ -85,46 +85,6 @@ void Generate(const char* fileName, size_t requestedSize)
     }
 
     file.close();
-}
-
-// Can parse "3000", "3K", "3.5M", 100G.
-size_t GetFileSize(const std::string& param)
-{
-    if (param.empty())
-        throw std::logic_error("Empty file size");
-
-    const int kilo = 1024;
-    int mult = 1;
-    size_t numSize = param.size();
-
-    char lastChar = param[param.size() - 1];
-    switch (lastChar)
-    {
-    case 'K':
-        mult = kilo;
-        numSize -= 1;
-        break;
-
-    case 'M':
-        mult = kilo*kilo;
-        numSize -= 1;
-        break;
-
-    case 'G':
-        mult = kilo*kilo*kilo;
-        numSize -= 1;
-        break;
-    }
-
-    try
-    {
-        double num = boost::lexical_cast<double>(param.substr(0, numSize));
-        return static_cast<size_t>(num * mult);
-    }
-    catch (boost::bad_lexical_cast&)
-    {
-        throw std::logic_error("Invalid file size");
-    }
 }
 
 size_t GetWordsCount()

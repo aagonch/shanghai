@@ -15,9 +15,9 @@
 
 int main(int argc, char** argv)
 {
-    if (argc != 3)
+    if (argc != 4)
     {
-        std::cerr << "Usage: sorter <input-file> <output-file>" << std::endl;
+        std::cerr << "Usage: sorter <input-file> <output-file> <chunk-size>" << std::endl;
         return 1;
     }
 
@@ -28,22 +28,24 @@ int main(int argc, char** argv)
 
         FileRegistry registry(argv[1]);
 
+        InitialSorter<FastEntry> sorter(GetSize(argv[3]));
         //InitialSorter<SimpleEntry> sorter;
-
-        size_t M = 1024*1024;
-        InitialSorter<FastEntry> sorter(1024*M);
         sorter.Process(registry);
 
-        Merger<FastEntry> merger(3, 100*M);
+        std::cout << "Merging, totalTime:" << c.ElapsedTime() << "sec" << std::endl;
+
+        Merger<FastEntry> merger(8, GetSize("32M"));
         merger.Process(registry);
+
+        std::cout << "Renaming, totalTime:" << c.ElapsedTime() << "sec" << std::endl;
 
         std::vector<std::string> result = registry.PopFront(100);
         assert(result.size() == 1);
         boost::filesystem::rename(result.at(0), argv[2]);
 
         std::cout << "Success, totalTime:" << c.ElapsedTime() << "sec"
-                  << ", xxx:" << xxx << ""
-                  << ", yyy:" << yyy << ""
+                  << ", totalCmpCount:" << totalCmpCount << ""
+                  << ", memCmpCount:" << memCmpCount << ""
                   << std::endl;
     }
     catch(std::exception& e)

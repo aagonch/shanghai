@@ -5,7 +5,7 @@
 #include <string>
 #include <cstring>
 #include <tuple>
-
+#include <boost/lexical_cast.hpp>
 
 inline uint64_t ReverseByteOrder(uint64_t value)
 {
@@ -87,4 +87,67 @@ inline std::string GetPlatformEol()
     std::stringstream ss;
     ss << std::endl;
     return ss.str();
+}
+
+// Can parse "3000", "3K", "3.5M", 100G.
+size_t GetSize(const std::string& param)
+{
+    if (param.empty())
+        throw std::logic_error("Empty file size");
+
+    const int kilo = 1024;
+    int mult = 1;
+    size_t numSize = param.size();
+
+    char lastChar = param[param.size() - 1];
+    switch (lastChar)
+    {
+    case 'K':
+        mult = kilo;
+        numSize -= 1;
+        break;
+
+    case 'M':
+        mult = kilo*kilo;
+        numSize -= 1;
+        break;
+
+    case 'G':
+        mult = kilo*kilo*kilo;
+        numSize -= 1;
+        break;
+    }
+
+    try
+    {
+        double num = boost::lexical_cast<double>(param.substr(0, numSize));
+        return static_cast<size_t>(num * mult);
+    }
+    catch (boost::bad_lexical_cast&)
+    {
+        throw std::logic_error("Invalid file size '" + param + "'");
+    }
+}
+
+inline uint64_t to_ui64(char c)
+{
+    return static_cast<unsigned char>(c);
+}
+
+uint64_t fast_atoi(const char* ptr)
+{
+    uint64_t result = 0;
+    for (;;)
+    {
+        char c = *ptr++;
+        if (c == ' ') continue;
+        if (c < '0') break;
+        if (c > '9') break;
+
+        // why should we use base of 10?
+        // For comparing base of 16 is ok,
+        // but x << 4 may be faster than x*10.
+        result = (result << 4) + (c - '0');
+    }
+    return result;
 }

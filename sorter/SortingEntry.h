@@ -11,7 +11,7 @@
 
 #include "xxhash/xxhash.h"
 
-// Entry we are going to sort.
+// Entry we are going to sort, primitive implementation (for comparing)
 class SimpleEntry
 {
     int m_number;
@@ -40,15 +40,16 @@ public:
         return cmp == 0 && m_number < other.m_number;
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const SimpleEntry& entry)
+    template <class TStream>
+    void ToStream(TStream& stream) const
     {
-        return os << entry.m_number << ". " << entry.m_string;
+        stream << m_number << ". " << m_string;
     }
 };
 
 
-size_t xxx = 0;
-size_t yyy = 0;
+size_t totalCmpCount = 0;
+size_t memCmpCount = 0;
 
 template <size_t PrefixLen> struct PrefixSelector;
 template <> struct PrefixSelector<1> { typedef std::tuple<uint64_t> Type; };
@@ -57,10 +58,16 @@ template <> struct PrefixSelector<3> { typedef std::tuple<uint64_t, uint64_t, ui
 template <> struct PrefixSelector<4> { typedef std::tuple<uint64_t, uint64_t, uint64_t, uint64_t> Type; };
 
 // Entry we are going to sort.
+// features:
+// * no memory copy, it stores ptr to buffer
+// * first N bytes comparing as int64, not as array of char (N=PrefixLen*sizeof(uint64))
+// * using hash helps to detect equal strings (disabled now, ~2% of equal strings, but all string must be hashed)
+// * memcpy() instead of lexical_cmp
+// std::sort() with FastEntry is 4x times faster std::sort() with SimpleEntry
 template<size_t PrefixLen, bool UseHash_>
 class TFastEntry
 {
-    int m_number = -1;
+    uint64_t m_number = 0;
     typename PrefixSelector<PrefixLen>::Type m_prefix;
     XXH64_hash_t m_hash = 0;
     const char* m_linePtr = nullptr;
@@ -76,7 +83,7 @@ public:
 
     TFastEntry(const char* line, size_t size) : m_linePtr(line), m_lineSize(size)
     {
-        m_number = atoi(line);
+        m_number = fast_atoi(line);
         const char* dotPos = reinterpret_cast<const char*>(memchr(line, '.', size));
         if (dotPos == nullptr)
             throw std::logic_error("Invalid line [" + std::string(line, line + std::min(1000LU, size)) + "]");
@@ -103,6 +110,7 @@ public:
 
     bool operator<(const TFastEntry& other) const
     {
+        ++totalCmpCount;
         if (m_prefix < other.m_prefix) return true;
         if (m_prefix > other.m_prefix) return false;
 
@@ -110,7 +118,7 @@ public:
 
         if (!UseHash || m_hash != other.m_hash)
         {
-            ++xxx;
+
             const char* end = m_linePtr + m_lineSize;
             const char* end1 = other.m_linePtr + other.m_lineSize;
             size_t size = end - m_strPtr;
@@ -123,6 +131,7 @@ public:
             if (!isShortStringEquality)
             {
                 // it not short strings with equal prefixes, compare futher
+                ++memCmpCount;
 
                 // start cmp after N bytes.
                 int cmp = memcmp(m_strPtr + N, other.m_strPtr + N, std::min(size, size1) - N);
@@ -139,12 +148,12 @@ public:
         return m_number < other.m_number;
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const TFastEntry& entry)
+    template <class TStream>
+    void ToStream(TStream& stream) const
     {
         static const std::string eol = GetPlatformEol();
-        os.write(entry.m_linePtr, entry.m_lineSize);
-        os.write(&eol[0], eol.size()); // Do not use std::endl, because it flushs the stream.
-        return os;
+        stream.write(m_linePtr, m_lineSize);
+        stream.write(&eol[0], eol.size()); // Do not use std::endl, because it flushs the stream.
     }
 };
 

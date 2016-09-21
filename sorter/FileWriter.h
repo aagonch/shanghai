@@ -20,10 +20,10 @@ void SaveFile(const char* filename, const std::vector<TEntry>& entries)
 
     for (const TEntry& entry : entries)
     {
-        file << entry;
+        entry.ToStream(file);
     }
 
     file.close();
 
-    std::cout << "SaveFile complete, time:" << c.ElapsedTime() << "sec" << std::endl;
+    std::cout << "SaveFile(" << filename << ") complete, time:" << c.ElapsedTime() << "sec" << std::endl;
 }

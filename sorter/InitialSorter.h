@@ -24,6 +24,7 @@ void Sort(std::vector<TEntry>& entries)
     std::cout << "Sort complete, time:" << c.ElapsedTime() << "sec" << std::endl;
 }
 
+// Reads source file and splits it to sorted chunks.
 template <class TEntry>
 class InitialSorter
 {
@@ -56,9 +57,8 @@ class InitialSorter
 public:
     InitialSorter(size_t chunkSize) : m_chunkSize(chunkSize)
     {
-
     }
-    // returns file name list of sorted chunks
+
     void Process(FileRegistry& registry)
     {
         ChunkData<TEntry> chunk(m_chunkSize);
@@ -67,6 +67,7 @@ public:
 
 private:
 
+    // ReadFile for SimpleEntry (no split to chunks, used for comparing)
     std::vector<std::string> ReadFile(ChunkData<SimpleEntry>& data, FileRegistry& registry)
     {
         std::ifstream file(registry.GetInitialFile().c_str());
@@ -90,7 +91,7 @@ private:
 
         double readTime = c2.ElapsedTime();
 
-        ProcessChunk(data, registry);
+       ProcessChunk(data, registry);
 
         std::cout << "Read complete, FileSize:" << fileSize*1e-6 << "M"
                   << ", EntryCount:" << data.entries.size()
@@ -98,6 +99,7 @@ private:
                   << std::endl;
     }
 
+    // the main version of ReadFile
     void ReadFile(ChunkData<FastEntry>& data, FileRegistry& registry)
     {
         FileReader reader(registry.GetInitialFile().c_str());
@@ -105,6 +107,7 @@ private:
         Clock c;
         c.Start();
         size_t totalEntries = 0;
+        int n = 0;
         while (reader.LoadNextChunk(data.buffer))
         {
             data.entries.clear();
@@ -114,9 +117,6 @@ private:
             {
                 ++totalEntries;
                 data.entries.emplace_back(line.data, line.size);
-//                std::cout << "LOADED [";
-//                std::cout.write(line.data, line.size);
-//                std::cout << "]" << std::endl;
             }
             double readTime = c.ElapsedTime();
 
@@ -126,12 +126,8 @@ private:
 
             ProcessChunk(data, registry);
             c.Start();
+            if (++n == 5) return;
         }
-
-//        std::cout << "Read complete, FileSize:" << fileSize*1e-6 << "M"
-//                  << ", EntryCount:" << data.entries.size()
-//                  << ", ReadTime:" << readTime << "sec"
-//                  << std::endl;
     }
 
     void ProcessChunk(ChunkData<FastEntry>& data, FileRegistry& registry)

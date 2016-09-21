@@ -15,6 +15,8 @@
 
 #include <boost/filesystem.hpp>
 
+
+// reads
 template<class TEntry>
 class Merger
 {
@@ -22,18 +24,22 @@ class Merger
     {
         std::shared_ptr<FileReader> reader;
         std::shared_ptr<std::vector<char>> buffer;
-        TEntry currentEntry;\
+        TEntry currentEntry;
 
-        void Next()
+        // Gets next entry from source
+        void Next(double& pureReadTime)
         {
             FileReader::Buffer line;
             if (!reader->TryGetLine(&line))
             {
+                Clock c;
+                c.Start();
                 if (!reader->LoadNextChunk(buffer) || !reader->TryGetLine(&line))
                 {
                     currentEntry = TEntry(); // invalidate entry
                     return;
                 }
+                pureReadTime += c.ElapsedTime();
             }
 
             currentEntry = TEntry(line.data, line.size);
@@ -41,6 +47,7 @@ class Merger
     };
 
     std::vector<Source> m_sources;
+    double m_pureReadTime;
 
 public:
     Merger(size_t count, size_t readBufSize) : m_sources(count)
@@ -62,7 +69,7 @@ public:
             for (size_t n = 0; n < files.size(); ++n)
             {
                 m_sources[n].reader = std::make_shared<FileReader>(files[n].c_str());
-                m_sources[n].Next();
+                m_sources[n].Next(m_pureReadTime);
             }
 
             Clock c;
@@ -73,7 +80,8 @@ public:
 
             std::cout << "Merge #" << mergeIter << " complete for [";
             for (auto f : files) std::cout << f << "; ";
-            std::cout << "] -> " << outputFile << ", Time:" << c.ElapsedTime() << std::endl;
+            std::cout << "] -> " << outputFile;
+            std::cout << ", Time:" << c.ElapsedTime() << "s, PureReadTime:" << m_pureReadTime << "s" <<std::endl;
 
             for (size_t n = 0; n < files.size(); ++n)
             {
@@ -100,7 +108,6 @@ private:
 
             for (size_t n = 0; n < N; ++n)
             {
-                ++yyy;
                 if (!m_sources[n].currentEntry.IsValid())
                 {
                     continue;
@@ -116,8 +123,8 @@ private:
             {
                 // we found index of source with min entry
                 // write entry to file and fetch next
-                file << m_sources[index].currentEntry;
-                m_sources[index].Next();
+                m_sources[index].currentEntry.ToStream(file);
+                m_sources[index].Next(m_pureReadTime);
                 continue;
             }
 

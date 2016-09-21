@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/Clock.h"
 #include "common/Utils.h"
 
 #include <cstdio>
@@ -7,6 +8,7 @@
 #include <vector>
 #include <stdexcept>
 #include <iostream>
+#include <fstream>
 #include <sstream>
 #include <cassert>
 #include <boost/noncopyable.hpp>
@@ -132,3 +134,55 @@ private:
     std::string m_eol;
     char m_actualEol;
 };
+
+inline void TestRead(const char* filename)
+{
+    std::cout << "TestRead(" << filename << ")" << std::endl;
+
+    Clock c;
+    c.Start();
+
+    size_t N = 0;
+
+    std::ifstream file(filename);
+
+    if (!file)
+    {
+        std::cout << "Cannot open " << filename << std::endl;
+        return;
+    }
+
+    std::string line;
+    while (std::getline(file, line))
+    {
+        N += line.size();
+    }
+
+    std::cout << "TeatRead complete t=" <<  c.ElapsedTime() << "s; N=" << N << "" << std::endl;
+}
+
+
+
+inline void TestRead2(const char* filename)
+{
+    std::cout << "TestRead2(" << filename << ")" << std::endl;
+
+    Clock c;
+    c.Start();
+
+    auto buffer = std::make_shared<std::vector<char>>(1024*1024*1024);
+    FileReader reader(filename);
+
+    size_t N = 0;
+
+    while (reader.LoadNextChunk(buffer))
+    {
+        FileReader::Buffer b;
+        while (reader.TryGetLine(&b))
+        {
+            N += b.size;
+        }
+    }
+
+    std::cout << "TeatRead2 complete t=" <<  c.ElapsedTime() << "s; N=" << N << "" << std::endl;
+}
