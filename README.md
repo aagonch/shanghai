@@ -33,7 +33,7 @@ sorter
 	Usage: sorter <source-file> <result-file> <chunk size>
 	Example: sorter data.txt result.txt 2G
 	
-	Chunk size should be about 1/2-1/4 of RAM size.
+	Chunk size should be about 1/4 of RAM size.
 
 tests
 -----
