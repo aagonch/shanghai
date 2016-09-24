@@ -19,12 +19,14 @@ size_t GetWordsCount();
 size_t GetFileSize(const std::string& param);
 std::string MakeNewString();
 void Generate(const char* fileName, size_t requestedSize);
+void PrintStat();
 
 int main(int argc, char** argv)
 {
     if (argc != 3)
     {
         std::cerr << "Usage: generator <output-file> <file-size>" << std::endl;
+        PrintStat();
         return 1;
     }
 
@@ -109,4 +111,33 @@ std::string MakeNewString()
         result += words[wordIndex];
     }
     return result;
+}
+
+void PrintStat()
+{
+    size_t N = 0;
+    size_t totalLen = 0;
+    std::vector<size_t> lengthDistr;
+
+    while (const char* word = words[N])
+    {
+        size_t len = strlen(word);
+        totalLen += len;
+
+        if (lengthDistr.size() < len + 1)
+            lengthDistr.resize(len + 1);
+
+        lengthDistr[len] += 1;
+        ++N;
+    }
+
+    std::cout << "Words in dictionary: " << N << std::endl;
+    std::cout << "Average word length: " << totalLen * 1.0  / N << std::endl;
+
+    std::cout << "Word length disrtibution: " << std::endl;
+
+    for (size_t n = 0; n < lengthDistr.size(); ++n)
+    {
+        std::cout << n << ":" << lengthDistr[n] << "(" << lengthDistr[n] * 100.0 / N << "%)" << std::endl;
+    }
 }

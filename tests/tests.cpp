@@ -194,7 +194,6 @@ BOOST_AUTO_TEST_CASE(TestGetPrefix)
     BOOST_CHECK(GetPrefix("ABCDEFGH", 8) < GetPrefix("ABCDEFZH", 8));
     BOOST_CHECK(GetPrefix("ABCDEFGH", 8) < GetPrefix("ABCDEFHZ", 8));
 
-    BOOST_CHECK(XXH64("ABCDEFGH", 8, 43) == XXH64("ABCDEFGH", 8, 43));
 }
 
 template<typename TEntry>
@@ -291,9 +290,8 @@ void TestEntryCmp()
 
 BOOST_AUTO_TEST_CASE(TestFastEntryCmp)
 {
-    TestEntryCmp<TFastEntry<1, false> >();
-    TestEntryCmp<TFastEntry<2, false> >();
-    TestEntryCmp<TFastEntry<1, true> >();
-    TestEntryCmp<TFastEntry<2, true> >();
+    TestEntryCmp<SimpleEntry>();
+    TestEntryCmp<SmallEntry>();
+    TestEntryCmp<FastEntry>();
 }
 

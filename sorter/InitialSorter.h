@@ -47,7 +47,7 @@ class InitialSorter
 
         void Reserve(size_t chunkSize)
         {
-            const size_t aproxBytesPerLine = 20;
+            const size_t aproxBytesPerLine = 32;
             entries.reserve(chunkSize / aproxBytesPerLine);
         }
     };
@@ -67,40 +67,8 @@ public:
 
 private:
 
-    // ReadFile for SimpleEntry (no split to chunks, used for comparing)
-    std::vector<std::string> ReadFile(ChunkData<SimpleEntry>& data, FileRegistry& registry)
-    {
-        std::ifstream file(registry.GetInitialFile().c_str());
-        if (!file)
-            throw std::logic_error("Cannot open file");
-
-        file.seekg (0, file.end);
-        size_t fileSize = file.tellg();
-        file.seekg (0, file.beg);
-
-        data.entries.clear();
-        data.Reserve(fileSize);
-
-        Clock c2;
-        c2.Start();
-        std::string line;
-        while (std::getline(file, line))
-        {
-            data.entries.emplace_back(line.data(), line.size());
-        }
-
-        double readTime = c2.ElapsedTime();
-
-       ProcessChunk(data, registry);
-
-        std::cout << "Read complete, FileSize:" << fileSize*1e-6 << "M"
-                  << ", EntryCount:" << data.entries.size()
-                  << ", ReadTime:" << readTime << "sec"
-                  << std::endl;
-    }
-
     // the main version of ReadFile
-    void ReadFile(ChunkData<FastEntry>& data, FileRegistry& registry)
+    void ReadFile(ChunkData<TEntry>& data, FileRegistry& registry)
     {
         FileReader reader(registry.GetInitialFile().c_str());
 
@@ -126,11 +94,10 @@ private:
 
             ProcessChunk(data, registry);
             c.Start();
-            //if (++n == 5) return;
         }
     }
 
-    void ProcessChunk(ChunkData<FastEntry>& data, FileRegistry& registry)
+    void ProcessChunk(ChunkData<TEntry>& data, FileRegistry& registry)
     {
         Sort(data.entries);
         SaveFile(registry.GetNext().c_str(), data.entries);

@@ -134,9 +134,9 @@ inline uint64_t to_ui64(char c)
     return static_cast<unsigned char>(c);
 }
 
-uint64_t fast_atoi(const char* ptr)
+uint32_t fast_atoi(const char* ptr)
 {
-    uint64_t result = 0;
+    uint32_t result = 0;
     for (;;)
     {
         char c = *ptr++;
@@ -144,10 +144,7 @@ uint64_t fast_atoi(const char* ptr)
         if (c < '0') break;
         if (c > '9') break;
 
-        // why should we use base of 10?
-        // For comparing base of 16 is ok,
-        // but x << 4 may be faster than x*10.
-        result = (result << 4) + (c - '0');
+        result = result * 10 + (c - '0');
     }
     return result;
 }

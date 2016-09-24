@@ -8,16 +8,18 @@
 #include <cassert>
 #include <algorithm>
 #include <tuple>
-
-#include "xxhash/xxhash.h"
+#include <stdint.h>
 
 // Entry we are going to sort, primitive implementation (for comparing)
+// Time of std::sort of 1G data is ~18.5sec
 class SimpleEntry
 {
     int m_number;
     std::string m_string;
 public:
     static constexpr bool IsExternalBuffer = false;
+    static constexpr bool UseHash = false;
+
     SimpleEntry() : m_number(-1) {}
     SimpleEntry(int number, const std::string& string) : m_number(number), m_string(string) {}
     SimpleEntry(const char* buff, size_t size)
@@ -31,6 +33,8 @@ public:
     }
 
     bool IsValid() const { return m_number >= 0; }
+
+    size_t GetHash() const { return 0; }
 
     bool operator<(const SimpleEntry& other) const
     {
@@ -51,64 +55,103 @@ public:
 size_t totalCmpCount = 0;
 size_t memCmpCount = 0;
 
-template <size_t PrefixLen> struct PrefixSelector;
-template <> struct PrefixSelector<1> { typedef std::tuple<uint64_t> Type; };
-template <> struct PrefixSelector<2> { typedef std::tuple<uint64_t, uint64_t> Type; };
-template <> struct PrefixSelector<3> { typedef std::tuple<uint64_t, uint64_t, uint64_t> Type; };
-template <> struct PrefixSelector<4> { typedef std::tuple<uint64_t, uint64_t, uint64_t, uint64_t> Type; };
-
 // Entry we are going to sort.
 // features:
 // * no memory copy, it stores ptr to buffer
-// * first N bytes comparing as int64, not as array of char (N=PrefixLen*sizeof(uint64))
-// * using hash helps to detect equal strings (disabled now, ~2% of equal strings, but all string must be hashed)
 // * memcpy() instead of lexical_cmp
-// std::sort() with FastEntry is 4x times faster std::sort() with SimpleEntry
-template<size_t PrefixLen, bool UseHash_>
-class TFastEntry
+// sizeof == 16 byte to allow bigger chunk size
+// Time of std::sort of 1G data is ~17sec
+class SmallEntry
 {
-    uint64_t m_number = 0;
-    typename PrefixSelector<PrefixLen>::Type m_prefix;
-    XXH64_hash_t m_hash = 0;
     const char* m_linePtr = nullptr;
-    const char* m_strPtr = nullptr;
-    size_t m_lineSize = 0;
+    uint64_t m_packedData = 0;
 
+
+protected:
+
+    const char* GetLinePtr() const { return m_linePtr; }
+    uint64_t GetNumber() const { return m_packedData >> 32; }
+    uint64_t GetLineSize() const { return (m_packedData >> 16) & 0xffff; }
+    uint64_t GetStringOffset() const { return m_packedData & 0xffff; }
+
+    const char* GetStringPtr() const { return m_linePtr + GetStringOffset(); }
+    uint64_t GetStringLen() const
+    {
+        assert(GetLineSize() >= GetStringOffset());
+        return GetLineSize() - GetStringOffset();
+    }
 public:
 
     static constexpr bool IsExternalBuffer = true;
-    static constexpr bool UseHash = UseHash_;
+    static constexpr bool UseHash = false;
 
-    TFastEntry() {}
+    SmallEntry() {}
 
-    TFastEntry(const char* line, size_t size) : m_linePtr(line), m_lineSize(size)
+    SmallEntry(const char* line, size_t size) : m_linePtr(line)
     {
-        m_number = fast_atoi(line);
+        assert(size <= 0xffff);
+
         const char* dotPos = reinterpret_cast<const char*>(memchr(line, '.', size));
         if (dotPos == nullptr)
             throw std::logic_error("Invalid line [" + std::string(line, line + std::min(1000LU, size)) + "]");
 
-        const char* str = dotPos + 1;
-        const char* end = line + size;
-
-        size_t strSize = end - str;
-
-        //m_prefix = GetPrefix128(str, strSize);
-        GetPrefixTuple(str, strSize, &m_prefix);
-        if (UseHash)
-        {
-            const size_t seed = 43;
-            m_hash = XXH64(str, strSize, seed);
-        }
-
-        m_strPtr = str;
+        size_t offset = dotPos - line + 1;
+        m_packedData = fast_atoi(line);
+        m_packedData = m_packedData << 32;
+        m_packedData = m_packedData | ((size & 0xffff) << 16);
+        m_packedData = m_packedData | ((offset & 0xffff) << 0);
     }
 
     bool IsValid() const { return m_linePtr != nullptr; }
 
-    XXH64_hash_t GetHash() const { return m_hash; }
+    size_t GetHash() const { return 0; }
 
-    bool operator<(const TFastEntry& other) const
+    bool operator<(const SmallEntry& other) const
+    {
+        assert(IsValid());
+        assert(other.IsValid());
+
+        size_t size = GetStringLen();
+        size_t size1 = other.GetStringLen();
+
+        int cmp = memcmp(GetStringPtr(), other.GetStringPtr(), std::min(size, size1));
+
+        if (cmp < 0) return true;
+        if (cmp > 0) return false;
+
+        if (size < size1) return true;
+        if (size > size1) return false;
+
+        return GetNumber() < other.GetNumber();
+    }
+
+    template <class TStream>
+    void ToStream(TStream& stream) const
+    {
+        static const std::string eol = GetPlatformEol();
+        stream.write(GetLinePtr(), GetLineSize());
+        stream.write(&eol[0], eol.size()); // Do not use std::endl, because it flushs the stream.
+    }
+};
+
+static_assert(sizeof(SmallEntry) == 16, "check SmallEntry");
+
+// Extends SmallEntry
+// * first N bytes comparing as int64, not as array of char (N=2*sizeof(uint64))
+// Larger sizeof, but faster compare.
+// Time of std::sort of 1G data is ~3.5sec
+class FastEntry : public SmallEntry
+{
+    std::tuple<uint64_t, uint64_t> m_prefix;
+public:
+
+    FastEntry() {}
+    FastEntry(const char* line, size_t size) : SmallEntry(line, size)
+    {
+        GetPrefixTuple(GetStringPtr(), GetStringLen(), &m_prefix);
+    }
+
+    bool operator<(const FastEntry& other) const
     {
         ++totalCmpCount;
         if (m_prefix < other.m_prefix) return true;
@@ -116,45 +159,25 @@ public:
 
         // first N bytes of strings are equal (N = sizeof(m_prefix)).
 
-        if (!UseHash || m_hash != other.m_hash)
+        size_t size = GetStringLen();
+        size_t size1 = other.GetStringLen();
+
+        constexpr size_t N = sizeof(m_prefix);
+
+        if (size > N && size1 > N)
         {
+            int cmp = memcmp(GetStringPtr() + N, other.GetStringPtr() + N, std::min(size, size1) - N);
 
-            const char* end = m_linePtr + m_lineSize;
-            const char* end1 = other.m_linePtr + other.m_lineSize;
-            size_t size = end - m_strPtr;
-            size_t size1 = end1 - other.m_strPtr;
+            if (cmp < 0) return true;
+            if (cmp > 0) return false;
 
-            constexpr size_t N = sizeof(m_prefix);
-
-            bool isShortStringEquality = size <= N && size == size1;
-
-            if (!isShortStringEquality)
-            {
-                // it not short strings with equal prefixes, compare futher
-                ++memCmpCount;
-
-                // start cmp after N bytes.
-                int cmp = memcmp(m_strPtr + N, other.m_strPtr + N, std::min(size, size1) - N);
-
-                if (cmp < 0) return true;
-                if (cmp > 0) return false;
-
-                if (size < size1) return true;
-                if (size > size1) return false;
-            }
+            if (size < size1) return true;
+            if (size > size1) return false;
         }
 
         // strings are equal, compare numbers
-        return m_number < other.m_number;
-    }
-
-    template <class TStream>
-    void ToStream(TStream& stream) const
-    {
-        static const std::string eol = GetPlatformEol();
-        stream.write(m_linePtr, m_lineSize);
-        stream.write(&eol[0], eol.size()); // Do not use std::endl, because it flushs the stream.
+        return GetNumber() < other.GetNumber();
     }
 };
 
-typedef TFastEntry<2, false> FastEntry;
+static_assert(sizeof(FastEntry) <= 32U, "check FastEntry");

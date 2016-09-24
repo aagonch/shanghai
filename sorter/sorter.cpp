@@ -28,6 +28,7 @@ int main(int argc, char** argv)
 
         FileRegistry registry(argv[1]);
 
+        //InitialSorter<SmallEntry> sorter(GetSize(argv[3]));
         InitialSorter<FastEntry> sorter(GetSize(argv[3]));
         //InitialSorter<SimpleEntry> sorter;
         sorter.Process(registry);
