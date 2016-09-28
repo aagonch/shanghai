@@ -18,9 +18,9 @@ void SaveFile(const char* filename, const std::vector<TEntry>& entries)
     if (!file)
         throw std::runtime_error("Cannot open output file.");
 
-    for (const TEntry& entry : entries)
+    for (size_t n = 0; n < entries.size(); ++n)
     {
-        entry.ToStream(file);
+        entries[n].ToStream(file);
     }
 
     file.close();

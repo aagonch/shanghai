@@ -178,24 +178,6 @@ BOOST_AUTO_TEST_CASE(TestFileReaderSimpleReadChunksNoLastEol)
     BOOST_CHECK(!reader.LoadNextChunk(chunk));
 }
 
-BOOST_AUTO_TEST_CASE(TestGetPrefix)
-{
-    BOOST_CHECK(GetPrefix("ABC", 3) < GetPrefix("BCA", 3));
-    BOOST_CHECK(GetPrefix("ABC", 3) < GetPrefix("BC", 2));
-    BOOST_CHECK(GetPrefix("BC", 2) == GetPrefix("BC", 2));
-
-    BOOST_CHECK(GetPrefix("ABCDEFGH", 8) == GetPrefix("ABCDEFGH", 8));
-    BOOST_CHECK(GetPrefix("ABCDEFGH", 8) < GetPrefix("ZBCDEFGH", 8));
-    BOOST_CHECK(GetPrefix("ABCDEFGH", 8) < GetPrefix("AZCDEFGH", 8));
-    BOOST_CHECK(GetPrefix("ABCDEFGH", 8) < GetPrefix("ABZDEFGH", 8));
-    BOOST_CHECK(GetPrefix("ABCDEFGH", 8) < GetPrefix("ABCZEFGH", 8));
-    BOOST_CHECK(GetPrefix("ABCDEFGH", 8) < GetPrefix("ABCDZFGH", 8));
-    BOOST_CHECK(GetPrefix("ABCDEFGH", 8) < GetPrefix("ABCDEZGH", 8));
-    BOOST_CHECK(GetPrefix("ABCDEFGH", 8) < GetPrefix("ABCDEFZH", 8));
-    BOOST_CHECK(GetPrefix("ABCDEFGH", 8) < GetPrefix("ABCDEFHZ", 8));
-
-}
-
 template<typename TEntry>
 void ExpectLess(const char* s1, const char* s2, int size1 = -1,  int size2 = -1)
 {

@@ -1,1 +1,9 @@
-CMakeLists.txt.user
+*.user
+*.filters
+*.dir
+*.sdf
+*.opensdf
+Release
+Debug
+CMakeFiles
+CmakeCache.txt

@@ -43,43 +43,14 @@ inline void GetPrefixTuple(const char* str, size_t size, std::tuple<uint64_t>* r
 
 
 // 64bit is not enough, we would like to use uint128_t.
-// It is available in gcc, for portability reason use tuples, they
-inline void GetPrefixTuple(const char* str, size_t size, std::tuple<uint64_t, uint64_t>* result)
+// It is available in gcc, for portability reason use tuples.
+inline void GetPrefixTuple(const char* str, size_t size, uint64_t* result1, uint64_t* result2)
 {
     uint64_t data[2] = {0};
     memcpy(&data, str, std::min(sizeof(data), size));
 
-    std::get<0>(*result) = ReverseByteOrder(data[0]);
-    std::get<1>(*result) = ReverseByteOrder(data[1]);
-}
-
-inline void GetPrefixTuple(const char* str, size_t size, std::tuple<uint64_t, uint64_t, uint64_t>* result)
-{
-    uint64_t data[3] = {0};
-    memcpy(&data, str, std::min(sizeof(data), size));
-
-    std::get<0>(*result) = ReverseByteOrder(data[0]);
-    std::get<1>(*result) = ReverseByteOrder(data[1]);
-    std::get<2>(*result) = ReverseByteOrder(data[1]);
-}
-
-inline void GetPrefixTuple(const char* str, size_t size, std::tuple<uint64_t, uint64_t, uint64_t, uint64_t>* result)
-{
-    uint64_t data[4] = {0};
-    memcpy(&data, str, std::min(sizeof(data), size));
-
-    std::get<0>(*result) = ReverseByteOrder(data[0]);
-    std::get<1>(*result) = ReverseByteOrder(data[1]);
-    std::get<2>(*result) = ReverseByteOrder(data[2]);
-    std::get<3>(*result) = ReverseByteOrder(data[3]);
-}
-
-// instead of comparing strings, we compare 64bit integers
-inline uint64_t GetPrefix(const char* str, size_t size)
-{
-    uint64_t data = 0;
-    memcpy(&data, str, std::min(sizeof(data), size));
-    return ReverseByteOrder(data);
+    *result1 = ReverseByteOrder(data[0]);
+    *result2 = ReverseByteOrder(data[1]);
 }
 
 inline std::string GetPlatformEol()

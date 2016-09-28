@@ -21,7 +21,7 @@ struct FileReader : boost::noncopyable
         size_t size;
     };
 
-    FileReader(const char* fileName, const char* eol = nullptr)
+    FileReader(const char* fileName, const char* eol = 0) : m_nextLinePos(0), m_remained(0)
     {
         m_file = fopen(fileName , "rb" );
         if (m_file == nullptr)
@@ -129,8 +129,8 @@ private:
     FILE* m_file;
     size_t m_fileSize;
     std::shared_ptr<std::vector<char>> m_buffer;
-    const char* m_nextLinePos = nullptr;
-    size_t m_remained = 0;
+    const char* m_nextLinePos;
+    size_t m_remained;
     std::string m_eol;
     char m_actualEol;
 };

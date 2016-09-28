@@ -79,7 +79,7 @@ public:
             DoMergeIteration(outputFile, files.size());
 
             std::cout << "Merge #" << mergeIter << " complete for [";
-            for (auto f : files) std::cout << f << "; ";
+            for (size_t n = 0; n < files.size(); ++n) std::cout << files[n] << "; ";
             std::cout << "] -> " << outputFile;
             std::cout << ", Time:" << c.ElapsedTime() << "s, PureReadTime:" << m_pureReadTime << "s" <<std::endl;
 
@@ -97,7 +97,7 @@ private:
 
     void DoMergeIteration(const std::string& outputFileName, size_t activeSourceCount)
     {
-        std::ofstream file(outputFileName.c_str());
+        std::ofstream file(outputFileName.c_str(), std::ofstream::binary);
 
         size_t N = activeSourceCount;
         assert(N <= m_sources.size());

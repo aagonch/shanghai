@@ -1,11 +1,11 @@
 project(shanghai)
 cmake_minimum_required(VERSION 2.8)
 
-find_package(Boost 1.54.0 REQUIRED system filesystem unit_test_framework)
+find_package(Boost 1.54.0)
 
 include_directories(.)
 
-add_definitions(-std=c++11 -g -D_GLIBCXX_USE_CXX11_ABI=0)
+#add_definitions(-std=c++11 -g -D_GLIBCXX_USE_CXX11_ABI=0)
 
 set(COMMON_HEADER_LIST
     ./common/Clock.h

@@ -17,8 +17,8 @@ class SimpleEntry
     int m_number;
     std::string m_string;
 public:
-    static constexpr bool IsExternalBuffer = false;
-    static constexpr bool UseHash = false;
+    static const bool IsExternalBuffer = false;
+    static const bool UseHash = false;
 
     SimpleEntry() : m_number(-1) {}
     SimpleEntry(int number, const std::string& string) : m_number(number), m_string(string) {}
@@ -63,16 +63,16 @@ size_t memCmpCount = 0;
 // Time of std::sort of 1G data is ~17sec
 class SmallEntry
 {
-    const char* m_linePtr = nullptr;
-    uint64_t m_packedData = 0;
+    const char* m_linePtr;
+    uint64_t m_packedData;
 
 
 protected:
 
     const char* GetLinePtr() const { return m_linePtr; }
-    uint64_t GetNumber() const { return m_packedData >> 32; }
-    uint64_t GetLineSize() const { return (m_packedData >> 16) & 0xffff; }
-    uint64_t GetStringOffset() const { return m_packedData & 0xffff; }
+    size_t GetNumber() const { return m_packedData >> 32; }
+    size_t GetLineSize() const { return (m_packedData >> 16) & 0xffff; }
+    size_t GetStringOffset() const { return m_packedData & 0xffff; }
 
     const char* GetStringPtr() const { return m_linePtr + GetStringOffset(); }
     uint64_t GetStringLen() const
@@ -82,10 +82,10 @@ protected:
     }
 public:
 
-    static constexpr bool IsExternalBuffer = true;
-    static constexpr bool UseHash = false;
+    static const bool IsExternalBuffer = true;
+    static const bool UseHash = false;
 
-    SmallEntry() {}
+    SmallEntry() : m_linePtr(0), m_packedData(0) {}
 
     SmallEntry(const char* line, size_t size) : m_linePtr(line)
     {
@@ -93,7 +93,7 @@ public:
 
         const char* dotPos = reinterpret_cast<const char*>(memchr(line, '.', size));
         if (dotPos == nullptr)
-            throw std::logic_error("Invalid line [" + std::string(line, line + std::min(1000LU, size)) + "]");
+            throw std::logic_error("Invalid line [" + std::string(line, line + size) + "]");
 
         size_t offset = dotPos - line + 1;
         m_packedData = fast_atoi(line);
@@ -142,27 +142,29 @@ static_assert(sizeof(SmallEntry) == 16, "check SmallEntry");
 // Time of std::sort of 1G data is ~3.5sec
 class FastEntry : public SmallEntry
 {
-    std::tuple<uint64_t, uint64_t> m_prefix;
+    uint64_t m_prefix[2];
 public:
 
     FastEntry() {}
     FastEntry(const char* line, size_t size) : SmallEntry(line, size)
     {
-        GetPrefixTuple(GetStringPtr(), GetStringLen(), &m_prefix);
+        GetPrefixTuple(GetStringPtr(), GetStringLen(), &m_prefix[0], &m_prefix[1]);
     }
 
     bool operator<(const FastEntry& other) const
     {
         ++totalCmpCount;
-        if (m_prefix < other.m_prefix) return true;
-        if (m_prefix > other.m_prefix) return false;
+        if (m_prefix[0] < other.m_prefix[0]) return true;
+        if (m_prefix[0] > other.m_prefix[0]) return false;
 
+		if (m_prefix[1] < other.m_prefix[1]) return true;
+        if (m_prefix[1] > other.m_prefix[1]) return false;
         // first N bytes of strings are equal (N = sizeof(m_prefix)).
 
         size_t size = GetStringLen();
         size_t size1 = other.GetStringLen();
 
-        constexpr size_t N = sizeof(m_prefix);
+        const size_t N = sizeof(uint64_t)*2;
 
         if (size > N && size1 > N)
         {

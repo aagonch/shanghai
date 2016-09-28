@@ -3,19 +3,25 @@
 
 Goncharov Alexey for Altium.
 
+Ported to Windows
 Requirements:
-	* CMake v2.8 or above;
-	* C++11 compiler compatible with gcc 4.9 or above;
-	* boost v 1.54 or above.
+	* Visual Studio 2010 or higher,
+    * boost 1.58 or higher
 
-Building
-	0. Go to project folder
-	0. mkdir build
-	0. cd build
-	0. cmake ..
-	0. make
-
-This app was developed under Linux, it also can be built and run under MS Windows. 
+    
+To build define environment vars
+	0. set BOOST_INCLUDE_DIR=<path to boost headers>
+	0. set BOOST_LIBRARYDIR=<path to boost libs x86>
+	0. set BOOST_LIBRARYDIR64=<path to boost libs x64>
+    --- OR ---
+    Setup correct INCLUDE & LINK directories in vcprojs.
+    
+    
+-- Changes -- 
+    0. Added vcprojs
+    0. Everywhere removed C++11 features to make compatible with MSVC 2010 installed on my collegue's laptop.
+    0. Fixed rand() in generator (RAND_MAX=MAX_INT on Linux vs 0x7fff on Win).
+    0. Fixed line endings for win
 
 generator
 ---------

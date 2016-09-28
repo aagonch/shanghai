@@ -2,15 +2,16 @@
 
 #include <vector>
 #include <string>
+#include <boost/lexical_cast.hpp>
 
 // stores names of initial and tmp files
 class FileRegistry
 {
-    size_t m_counter = 0;
+    size_t m_counter;
     std::string m_initialFile;
     std::vector<std::string> m_files;
 public:
-    FileRegistry(const std::string& initialFile) : m_initialFile(initialFile) {}
+    FileRegistry(const std::string& initialFile) : m_counter(0), m_initialFile(initialFile) {}
 
     const std::string& GetInitialFile() const { return m_initialFile; }
 
@@ -18,7 +19,7 @@ public:
 
     std::string GetNext(const std::string& label = std::string())
     {
-        std::string fname = m_initialFile + "." + label + (label.empty() ? "" : ".") + std::to_string(++m_counter);
+		std::string fname = m_initialFile + "." + label + (label.empty() ? "" : ".") + boost::lexical_cast<std::string>(++m_counter);
         m_files.push_back(fname);
         return fname;
     }

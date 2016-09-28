@@ -84,7 +84,7 @@ private:
             while (reader.TryGetLine(&line))
             {
                 ++totalEntries;
-                data.entries.emplace_back(line.data, line.size);
+                data.entries.push_back(TEntry(line.data, line.size));
             }
             double readTime = c.ElapsedTime();
 

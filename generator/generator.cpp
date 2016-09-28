@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <cstdlib>
 #include <cctype>
+#include <vector>
 
 #include <boost/circular_buffer.hpp>
 
@@ -20,6 +21,7 @@ size_t GetFileSize(const std::string& param);
 std::string MakeNewString();
 void Generate(const char* fileName, size_t requestedSize);
 void PrintStat();
+int MyRand();
 
 int main(int argc, char** argv)
 {
@@ -30,7 +32,7 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    srand(time(0));
+    srand(static_cast<unsigned int>(time(0)));
 
     try
     {
@@ -64,16 +66,16 @@ void Generate(const char* fileName, size_t requestedSize)
 
     while (file.tellp() < requestedSize)
     {
-        int num = rand() % MaxNum;
+        int num = MyRand() % MaxNum;
 
         file << num << ".";
 
         const int magicNumber = 42;
-        bool usePrevString = !recentStrings.empty() && (rand() % magicNumber == 0);
+        bool usePrevString = !recentStrings.empty() && (MyRand() % magicNumber == 0);
         if (usePrevString)
         {
             // get random string from recentStrings
-            size_t index = static_cast<size_t>(rand() % recentStrings.size());
+            size_t index = static_cast<size_t>(MyRand() % recentStrings.size());
             file << recentStrings[index];
         }
         else
@@ -106,7 +108,7 @@ std::string MakeNewString()
     int numWords = rand() % MaxWords + 1;
     for (int n = 0; n < numWords; ++n)
     {
-        size_t wordIndex = rand() % totalWords;
+        size_t wordIndex = MyRand() % totalWords;
         result += " ";
         result += words[wordIndex];
     }
@@ -140,4 +142,17 @@ void PrintStat()
     {
         std::cout << n << ":" << lengthDistr[n] << "(" << lengthDistr[n] * 100.0 / N << "%)" << std::endl;
     }
+}
+
+// crossplatform rand()
+int MyRand()
+{
+	if (RAND_MAX < MaxNum)
+	{
+		int N = 32*1024;
+		int a = rand() % N, b = rand() % N;
+		return a*N + b; 
+	}
+	
+	return rand();
 }
