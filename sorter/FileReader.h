@@ -23,9 +23,18 @@ struct FileReader : boost::noncopyable
 
     FileReader(const char* fileName, const char* eol = 0) : m_nextLinePos(0), m_remained(0)
     {
-        m_file = fopen(fileName , "rb" );
-        if (m_file == nullptr)
+#ifdef WIN32
+        errno_t err = fopen_s(&m_file, fileName , "rb" );
+		if (err != 0)
+		{
             throw std::runtime_error(std::string("Cannot open file ") + fileName);
+		}
+#else
+		m_file = fopen(fileName , "rb" );
+		if (!m_file)
+            throw std::runtime_error(std::string("Cannot open file ") + fileName);
+#endif
+        
 
         // obtain file size:
         fseek (m_file , 0 , SEEK_END);

@@ -11,46 +11,6 @@
 #include <stdint.h>
 
 // Entry we are going to sort, primitive implementation (for comparing)
-// Time of std::sort of 1G data is ~18.5sec
-class SimpleEntry
-{
-    int m_number;
-    std::string m_string;
-public:
-    static const bool IsExternalBuffer = false;
-    static const bool UseHash = false;
-
-    SimpleEntry() : m_number(-1) {}
-    SimpleEntry(int number, const std::string& string) : m_number(number), m_string(string) {}
-    SimpleEntry(const char* buff, size_t size)
-    {
-        const char* dot = strchr(buff, '.');
-        if (dot == nullptr || dot[1] != ' ')
-            throw std::logic_error("Invalid line");
-
-        m_number = atoi(buff);
-        m_string.assign(dot + 2, buff + size); // begin=(dot + 2) because of dot and space befoe string begins.
-    }
-
-    bool IsValid() const { return m_number >= 0; }
-
-    size_t GetHash() const { return 0; }
-
-    bool operator<(const SimpleEntry& other) const
-    {
-        int cmp = strcmp(m_string.c_str(), other.m_string.c_str());
-
-        if (cmp < 0) return true;
-        return cmp == 0 && m_number < other.m_number;
-    }
-
-    template <class TStream>
-    void ToStream(TStream& stream) const
-    {
-        stream << m_number << ". " << m_string;
-    }
-};
-
 
 size_t totalCmpCount = 0;
 size_t memCmpCount = 0;
@@ -75,7 +35,7 @@ protected:
     size_t GetStringOffset() const { return m_packedData & 0xffff; }
 
     const char* GetStringPtr() const { return m_linePtr + GetStringOffset(); }
-    uint64_t GetStringLen() const
+    size_t GetStringLen() const
     {
         assert(GetLineSize() >= GetStringOffset());
         return GetLineSize() - GetStringOffset();

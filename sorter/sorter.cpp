@@ -29,13 +29,12 @@ int main(int argc, char** argv)
         FileRegistry registry(argv[1]);
 
         //InitialSorter<SmallEntry> sorter(GetSize(argv[3]));
-        InitialSorter<FastEntry> sorter(GetSize(argv[3]));
-        //InitialSorter<SimpleEntry> sorter;
+        InitialSorter<FastEntry> sorter(static_cast<size_t>(GetSize(argv[3])));
         sorter.Process(registry);
 
         std::cout << "Merging, totalTime:" << c.ElapsedTime() << "sec" << std::endl;
 
-        Merger<FastEntry> merger(8, GetSize("32M"));
+        Merger<FastEntry> merger(8, static_cast<size_t>(GetSize("32M")));
         merger.Process(registry);
 
         std::cout << "Renaming, totalTime:" << c.ElapsedTime() << "sec" << std::endl;

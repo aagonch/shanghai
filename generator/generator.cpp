@@ -19,7 +19,7 @@ const size_t RepeatBufferSize = 100;
 size_t GetWordsCount();
 size_t GetFileSize(const std::string& param);
 std::string MakeNewString();
-void Generate(const char* fileName, size_t requestedSize);
+void Generate(const char* fileName, uint64_t requestedSize);
 void PrintStat();
 int MyRand();
 
@@ -36,7 +36,9 @@ int main(int argc, char** argv)
 
     try
     {
-        const size_t requestedSize = GetSize(argv[2]);
+        const uint64_t requestedSize = GetSize(argv[2]);
+
+		std::cout << "Requested size = " << requestedSize << " bytes."<< std::endl;
 
         Clock clock;
         clock.Start();
@@ -54,7 +56,7 @@ int main(int argc, char** argv)
     return 0;
 }
 
-void Generate(const char* fileName, size_t requestedSize)
+void Generate(const char* fileName, uint64_t requestedSize)
 {
     std::ofstream file(fileName);
     if (!file)
@@ -63,12 +65,13 @@ void Generate(const char* fileName, size_t requestedSize)
     // Task conditions requires that some strings are met more than 1 time in the file
     // Store recent strings and insert them second time sometimes
     boost::circular_buffer<std::string> recentStrings(RepeatBufferSize);
-
-    while (file.tellp() < requestedSize)
+	uint64_t writtenBytes = 0;
+    while (writtenBytes < requestedSize)
     {
+		std::stringstream ss;
         int num = MyRand() % MaxNum;
 
-        file << num << ".";
+        ss << num << ".";
 
         const int magicNumber = 42;
         bool usePrevString = !recentStrings.empty() && (MyRand() % magicNumber == 0);
@@ -76,16 +79,20 @@ void Generate(const char* fileName, size_t requestedSize)
         {
             // get random string from recentStrings
             size_t index = static_cast<size_t>(MyRand() % recentStrings.size());
-            file << recentStrings[index];
+            ss << recentStrings[index];
         }
         else
         {
             // generate a new string
             recentStrings.push_back(MakeNewString());
-            file << recentStrings.back();
+            ss << recentStrings.back();
         }
 
-        file << std::endl;
+        ss << std::endl;
+
+		std::string line = ss.str();
+		writtenBytes += line.size();
+		file << line;
     }
 
     file.close();
@@ -132,7 +139,7 @@ void PrintStat()
         lengthDistr[len] += 1;
         ++N;
     }
-
+	std::cout << "sizeof(size_t): " << sizeof(size_t) << std::endl;
     std::cout << "Words in dictionary: " << N << std::endl;
     std::cout << "Average word length: " << totalLen * 1.0  / N << std::endl;
 

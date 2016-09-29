@@ -61,7 +61,7 @@ inline std::string GetPlatformEol()
 }
 
 // Can parse "3000", "3K", "3.5M", 100G.
-size_t GetSize(const std::string& param)
+uint64_t GetSize(const std::string& param)
 {
     if (param.empty())
         throw std::logic_error("Empty file size");
@@ -92,7 +92,7 @@ size_t GetSize(const std::string& param)
     try
     {
         double num = boost::lexical_cast<double>(param.substr(0, numSize));
-        return static_cast<size_t>(num * mult);
+        return static_cast<uint64_t>(num * mult + 0.5);
     }
     catch (boost::bad_lexical_cast&)
     {

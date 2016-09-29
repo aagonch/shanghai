@@ -39,7 +39,10 @@ sorter
 	Usage: sorter <source-file> <result-file> <chunk size>
 	Example: sorter data.txt result.txt 2G
 	
-	Chunk size should be about 1/4 of RAM size.
+	Chunk size should be:
+        * x86 version: 750M 
+        * x64 version: about 1/4 of RAM size.
+    x64 version is prefered, it works 10%-15% faster than x86 even with same chunk size.
 
 tests
 -----
